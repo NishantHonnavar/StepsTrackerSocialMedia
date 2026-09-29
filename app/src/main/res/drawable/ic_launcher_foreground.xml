@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Lock Shackle -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M42,48 V39 C42,32.37 47.37,27 54,27 C60.63,27 66,32.37 66,39 V48"
+        android:strokeWidth="6"
+        android:strokeLineCap="round">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="42"
+                android:startY="27"
+                android:endX="66"
+                android:endY="48"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#38BDF8" />
+                <item android:offset="1.0" android:color="#06B6D4" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Lock Body with rounded corners -->
+    <path
+        android:pathData="M35,46 H73 C76.3,46 79,48.7 79,52 V75 C79,78.3 76.3,81 73,81 H35 C31.7,81 29,78.3 29,75 V52 C29,48.7 31.7,46 35,46 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="29"
+                android:startY="46"
+                android:endX="79"
+                android:endY="81"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#0284C7" />
+                <item android:offset="1.0" android:color="#0F766E" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Runner / Footstep silhouette cutout in the lock body -->
+    <!-- Runner Head -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54.5 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0" />
+
+    <!-- Runner Body and Legs (Dynamic sprint) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M52.5,58 L55,57.5 L57,61.5 L53.5,62.5 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M53.5,61.5 L50.5,66.5 L48,65.5 L51.5,60.5 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M55,61 L58.5,67 L61.5,67.5 L57.5,60 Z" />
+
+    <!-- Motion trails -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M43,73 L49,73 L47.5,75 L41.5,75 Z" />
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M46,70 L51,70 L49.5,72 L44.5,72 Z" />
+</vector>
