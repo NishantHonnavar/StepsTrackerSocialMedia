@@ -28,6 +28,37 @@ private const val TAG = "FirebaseAuthManager"
 
 object FirebaseAuthManager {
 
+    // =========================================================================
+    // GOOGLE SIGN-IN CLIENT CONFIGURATION
+    // Edit your Web Client ID here or set BuildConfig.WEB_CLIENT_ID in app/build.gradle.kts
+    // =========================================================================
+    const val WEB_CLIENT_ID_PLACEHOLDER = "YOUR_WEB_CLIENT_ID_HERE"
+    const val CONFIGURED_WEB_CLIENT_ID = "YOUR_WEB_CLIENT_ID_HERE"
+
+    /**
+     * Resolves the Web Client ID for Google Sign-In.
+     * Checked in order: BuildConfig -> CONFIGURED_WEB_CLIENT_ID -> dynamic resource (if google-services.json is added).
+     */
+    fun resolveWebClientId(context: Context): String {
+        val buildConfigValue = BuildConfig.WEB_CLIENT_ID
+        if (buildConfigValue.isNotBlank() && buildConfigValue != WEB_CLIENT_ID_PLACEHOLDER) {
+            return buildConfigValue
+        }
+        if (CONFIGURED_WEB_CLIENT_ID.isNotBlank() && CONFIGURED_WEB_CLIENT_ID != WEB_CLIENT_ID_PLACEHOLDER) {
+            return CONFIGURED_WEB_CLIENT_ID
+        }
+        val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
+        if (resId != 0) {
+            try {
+                val resString = context.getString(resId)
+                if (resString.isNotBlank()) return resString
+            } catch (_: Exception) {
+                // Ignore dynamic lookup exception
+            }
+        }
+        return WEB_CLIENT_ID_PLACEHOLDER
+    }
+
     val auth: FirebaseAuth?
         get() = try {
             Firebase.auth
@@ -74,10 +105,9 @@ object FirebaseAuthManager {
             return
         }
 
-        val clientId = try {
-            context.getString(R.string.default_web_client_id)
-        } catch (e: Exception) {
-            Log.w(TAG, "default_web_client_id string not found in resources", e)
+        val clientId = resolveWebClientId(context)
+        if (clientId.isBlank() || clientId == WEB_CLIENT_ID_PLACEHOLDER) {
+            Log.d(TAG, "Google Sign-In Web Client ID not configured. Set CONFIGURED_WEB_CLIENT_ID or BuildConfig.WEB_CLIENT_ID.")
             onUnauthenticated()
             return
         }
@@ -133,11 +163,10 @@ object FirebaseAuthManager {
             return
         }
 
-        val clientId = try {
-            activity.getString(R.string.default_web_client_id)
-        } catch (e: Exception) {
-            val msg = "Google Sign-In configuration missing: default_web_client_id not found"
-            Log.e(TAG, msg, e)
+        val clientId = resolveWebClientId(activity)
+        if (clientId.isBlank() || clientId == WEB_CLIENT_ID_PLACEHOLDER) {
+            val msg = "Google Sign-In configuration missing: Please set YOUR_WEB_CLIENT_ID_HERE in FirebaseAuthManager.kt or app/build.gradle.kts"
+            Log.e(TAG, msg)
             onError(msg)
             return
         }
