@@ -20,6 +20,12 @@ jobs:
           DIR=$(dirname "$(find . -name 'settings.gradle*' | head -n 1)")
           echo "Project folder: $DIR"
           cd "$DIR"
+          if [ ! -f debug.keystore ]; then
+            keytool -genkeypair -v -keystore debug.keystore \
+              -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 \
+              -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
           if [ -f ./gradlew ]; then
             chmod +x ./gradlew
             ./gradlew assembleDebug
