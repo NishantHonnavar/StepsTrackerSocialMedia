@@ -26,7 +26,11 @@ data class StepLockData(
     val gmailUserEmail: String = "nishantforscience@gmail.com",
     val lastWeeklyReportSentTimestamp: Long = 0L,
     val lastWeeklyReportStatus: String = "",
-    val rankLevelUpCelebration: UserRank? = null
+    val rankLevelUpCelebration: UserRank? = null,
+    val isFirebaseConnected: Boolean = false,
+    val firebaseUserEmail: String? = null,
+    val firebaseUserDisplayName: String? = null,
+    val isFirebaseSyncing: Boolean = false
 ) {
     val activeProfile: UserProfile
         get() = profiles.firstOrNull { it.id == activeProfileId }

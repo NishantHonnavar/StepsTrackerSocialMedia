@@ -16,6 +16,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -61,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -77,11 +79,13 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.ui.theme.DarkSlateNavy
 import com.example.ui.theme.DeepVoidNavy
 import com.example.ui.theme.ElectricCyan
+import com.example.ui.theme.EmeraldNeon
 import com.example.ui.theme.InnerCardBorder
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.SurfaceDark
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.WarmAmberGold
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -101,6 +105,15 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             // Service start handled gracefully
         }
+
+        // Silent background auto sign-in with Google/Firebase
+        FirebaseAuthManager.attemptAutoSignIn(
+            context = this,
+            scope = lifecycleScope,
+            onSuccess = {
+                StepLockRepository.syncWithFirebase()
+            }
+        )
 
         setContent {
             MyApplicationTheme(darkTheme = true) {
@@ -220,6 +233,36 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onTuneStepGoal = { newGoal ->
                                     StepLockRepository.updateDailyStepGoal(newGoal)
+                                },
+                                onSignInGoogle = {
+                                    FirebaseAuthManager.signInWithGoogle(
+                                        activity = this@MainActivity,
+                                        scope = lifecycleScope,
+                                        onSuccess = { user ->
+                                            Toast.makeText(
+                                                this@MainActivity,
+                                                "Connected to Firebase as ${user.displayName ?: user.email} ☁️",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            StepLockRepository.syncWithFirebase()
+                                        },
+                                        onError = { errorMsg ->
+                                            Toast.makeText(this@MainActivity, "Sign-in error: $errorMsg", Toast.LENGTH_LONG).show()
+                                        }
+                                    )
+                                },
+                                onSignOutGoogle = {
+                                    FirebaseAuthManager.signOut(
+                                        context = this@MainActivity,
+                                        scope = lifecycleScope,
+                                        onComplete = {
+                                            Toast.makeText(this@MainActivity, "Signed out from Google account", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                },
+                                onSyncFirebaseNow = {
+                                    StepLockRepository.syncWithFirebase()
+                                    Toast.makeText(this@MainActivity, "Synced to Firestore cloud database ☁️", Toast.LENGTH_SHORT).show()
                                 }
                             )
                         }
@@ -241,6 +284,12 @@ class MainActivity : ComponentActivity() {
 
                         is AppRoute.Achievements -> {
                             AchievementsScreen(
+                                onNavigateBack = { navController.popBack() }
+                            )
+                        }
+
+                        is AppRoute.WebCompanion -> {
+                            WebCompanionScreen(
                                 onNavigateBack = { navController.popBack() }
                             )
                         }
@@ -440,6 +489,29 @@ fun MainDashboardScreen(
 
                         Spacer(modifier = Modifier.width(6.dp))
 
+                        // Cloud Sync & Web Companion Indicator
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(DarkSlateNavy)
+                                .border(
+                                    1.dp,
+                                    if (state.isFirebaseConnected) EmeraldNeon.copy(alpha = 0.5f) else InnerCardBorder,
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .clickable { navController.navigateTo(AppRoute.WebCompanion) }
+                                .testTag("top_bar_cloud_indicator"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (state.isFirebaseConnected) "🌐" else "☁️",
+                                fontSize = 14.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
                         CompactRankBadge(
                             rank = state.rank,
                             onClick = { navController.navigateTo(AppRoute.LevelsRoadmap) }
@@ -539,6 +611,165 @@ fun MainDashboardScreen(
                         Toast.makeText(context, "Walk session completed! Screen time earned.", Toast.LENGTH_SHORT).show()
                     }
                 )
+            }
+
+            // ================================================================
+            // CARD 4: WEB COMPANION ACCESS CARD (PORTAL & REMOTE DASHBOARD)
+            // ================================================================
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { navController.navigateTo(AppRoute.WebCompanion) }
+                        .testTag("dashboard_web_companion_card"),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkSlateNavy),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        Brush.horizontalGradient(
+                            listOf(
+                                ElectricCyan.copy(alpha = 0.5f),
+                                InnerCardBorder
+                            )
+                        )
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(ElectricCyan.copy(alpha = 0.15f))
+                                    .border(1.dp, ElectricCyan.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = "🌐", fontSize = 22.sp)
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Web Companion Portal",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(EmeraldNeon.copy(alpha = 0.2f))
+                                            .padding(horizontal = 5.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "SYNCED",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = EmeraldNeon
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Monitor steps & lock status on desktop browser",
+                                    fontSize = 11.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.Default.OpenInNew,
+                            contentDescription = "Open Web Companion",
+                            tint = ElectricCyan,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            // ================================================================
+            // QUICK NAVIGATION TILE: TRENDS & ACHIEVEMENTS
+            // ================================================================
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { navController.navigateTo(AppRoute.Trends) }
+                            .testTag("dashboard_trends_card"),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = DarkSlateNavy),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, InnerCardBorder)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = "📊", fontSize = 20.sp)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Weekly Trends",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = "Heatmaps & stats",
+                                    fontSize = 10.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                    }
+
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { navController.navigateTo(AppRoute.Achievements) }
+                            .testTag("dashboard_achievements_card"),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = DarkSlateNavy),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, InnerCardBorder)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = "🏆", fontSize = 20.sp)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Achievements",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = "${state.unlockedAchievementsCount} Unlocked",
+                                    fontSize = 10.sp,
+                                    color = WarmAmberGold
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             item {

@@ -1940,7 +1940,10 @@ fun SettingsScreen(
     onRequestActivityPermission: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
     onSwitchProfileClick: () -> Unit,
-    onTuneStepGoal: (Int) -> Unit
+    onTuneStepGoal: (Int) -> Unit,
+    onSignInGoogle: () -> Unit = {},
+    onSignOutGoogle: () -> Unit = {},
+    onSyncFirebaseNow: () -> Unit = {}
 ) {
     BackHandler { onNavigateBack() }
     var stepGoalSlider by remember { mutableFloatStateOf(state.dailyStepGoal.toFloat()) }
@@ -2044,6 +2047,157 @@ fun SettingsScreen(
                             actionLabel = "Grant",
                             onClick = onRequestNotificationPermission
                         )
+                    }
+                }
+            }
+
+            item {
+                Text(
+                    text = "FIREBASE CLOUD DATABASE & SYNC",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextMuted,
+                    letterSpacing = 1.sp
+                )
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth().testTag("firebase_cloud_card"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkSlateNavy),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (state.isFirebaseConnected) EmeraldNeon.copy(alpha = 0.5f) else InnerCardBorder
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(
+                                            if (state.isFirebaseConnected) EmeraldNeon.copy(alpha = 0.2f)
+                                            else ElectricCyan.copy(alpha = 0.2f)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (state.isFirebaseConnected) "☁️" else "🔥",
+                                        fontSize = 18.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "Firestore Cloud Sync",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary
+                                    )
+                                    Text(
+                                        text = if (state.isFirebaseConnected)
+                                            (state.firebaseUserEmail ?: "Cloud account active")
+                                        else "Offline local storage",
+                                        fontSize = 11.sp,
+                                        color = TextSecondary
+                                    )
+                                }
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(
+                                        if (state.isFirebaseConnected) EmeraldNeon.copy(alpha = 0.15f)
+                                        else TextMuted.copy(alpha = 0.2f)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (state.isFirebaseConnected) EmeraldNeon else InnerCardBorder,
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = if (state.isFirebaseConnected) "CONNECTED" else "LOCAL",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (state.isFirebaseConnected) EmeraldNeon else TextSecondary
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        if (state.isFirebaseConnected) {
+                            Text(
+                                text = "Your step goals, banked screen time, and custom modes are continuously synchronized with Google Cloud Firestore.",
+                                fontSize = 12.sp,
+                                color = TextSecondary,
+                                lineHeight = 16.sp
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Button(
+                                    onClick = onSyncFirebaseNow,
+                                    modifier = Modifier.weight(1f).height(40.dp).testTag("sync_firebase_button"),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = ElectricCyan,
+                                        contentColor = DeepVoidNavy
+                                    )
+                                ) {
+                                    Text(
+                                        text = if (state.isFirebaseSyncing) "Syncing..." else "Sync Now",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = onSignOutGoogle,
+                                    modifier = Modifier.weight(1f).height(40.dp).testTag("sign_out_firebase_button"),
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, InnerCardBorder),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+                                ) {
+                                    Text("Sign Out", fontSize = 12.sp)
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = "Sign in with your Google account to back up and restore your walking data across devices.",
+                                fontSize = 12.sp,
+                                color = TextSecondary,
+                                lineHeight = 16.sp
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = onSignInGoogle,
+                                modifier = Modifier.fillMaxWidth().height(44.dp).testTag("sign_in_google_button"),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = ElectricCyan,
+                                    contentColor = DeepVoidNavy
+                                )
+                            ) {
+                                Text(
+                                    text = "Sign in with Google",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
                 }
             }

@@ -8,11 +8,16 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
+import android.util.Log
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -33,6 +38,8 @@ object StepLockRepository {
     private const val KEY_LAST_WEEKLY_REPORT_STATUS = "key_last_weekly_report_status"
 
     private var prefs: SharedPreferences? = null
+    private var firebaseRepo: FirebaseStepLockRepository? = null
+    private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val _state = MutableStateFlow(StepLockData())
     val state: StateFlow<StepLockData> = _state.asStateFlow()
@@ -94,8 +101,58 @@ object StepLockRepository {
             }
             saveProfilesToPrefs(profiles, activeId)
             checkDailyMidnightOrMorningReset()
+
+            try {
+                firebaseRepo = FirebaseStepLockRepository(context)
+                repoScope.launch {
+                    FirebaseAuthManager.authStateFlow().collect { user ->
+                        _state.update {
+                            it.copy(
+                                isFirebaseConnected = user != null,
+                                firebaseUserEmail = user?.email,
+                                firebaseUserDisplayName = user?.displayName
+                            )
+                        }
+                        if (user != null) {
+                            syncWithFirebase()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("StepLockRepository", "Firebase initialization deferred: ${e.message}")
+            }
         }
         syncPermissions(context)
+    }
+
+    fun syncWithFirebase() {
+        val user = FirebaseAuthManager.currentUser ?: return
+        val current = _state.value
+        val repo = firebaseRepo ?: return
+
+        repoScope.launch {
+            _state.update { it.copy(isFirebaseSyncing = true) }
+            try {
+                repo.syncUserAccount(
+                    user = user,
+                    activeProfileId = current.activeProfileId,
+                    lifetimeSteps = current.lifetimeSteps,
+                    lifetimeXp = current.lifetimeXp,
+                    currentStreak = current.activeProfile.currentStreak,
+                    bestStreak = current.activeProfile.bestStreak
+                )
+                current.profiles.forEach { profile ->
+                    repo.saveProfile(user.uid, profile)
+                }
+                current.weeklyTrends.forEach { trend ->
+                    repo.recordDayHistory(user.uid, trend)
+                }
+            } catch (e: Exception) {
+                Log.w("StepLockRepository", "Firebase sync error: ${e.message}")
+            } finally {
+                _state.update { it.copy(isFirebaseSyncing = false) }
+            }
+        }
     }
 
     private fun saveProfilesToPrefs(profiles: List<UserProfile>, activeId: String) {
@@ -106,6 +163,7 @@ object StepLockRepository {
             putString(KEY_ACTIVE_PROFILE_ID, activeId)
             apply()
         }
+        syncWithFirebase()
     }
 
     fun setSimulatedPeriod(period: TimeOfDayPeriod?) {

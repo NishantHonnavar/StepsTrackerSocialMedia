@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUser(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.email is string && data.email.size() <= 200 &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!('activeProfileId' in data) || (data.activeProfileId is string && data.activeProfileId.size() <= 64)) &&
+             (!('lifetimeSteps' in data) || (data.lifetimeSteps is int && data.lifetimeSteps >= 0)) &&
+             (!('lifetimeXp' in data) || (data.lifetimeXp is int && data.lifetimeXp >= 0)) &&
+             (!('currentStreak' in data) || (data.currentStreak is int && data.currentStreak >= 0)) &&
+             (!('bestStreak' in data) || (data.bestStreak is int && data.bestStreak >= 0)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidUserProfile(data) {
+      return data.profileId is string && isValidId(data.profileId) &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 50 &&
+             (!('emoji' in data) || (data.emoji is string && data.emoji.size() <= 10)) &&
+             (!('colorHex' in data) || data.colorHex is int) &&
+             (!('dailySteps' in data) || (data.dailySteps is int && data.dailySteps >= 0)) &&
+             (!('bankedSeconds' in data) || (data.bankedSeconds is int && data.bankedSeconds >= 0)) &&
+             data.stepsPerMinute is int && data.stepsPerMinute >= 10 && data.stepsPerMinute <= 1000 &&
+             data.dailyStepGoal is int && data.dailyStepGoal >= 100 && data.dailyStepGoal <= 100000 &&
+             (!('bonusMinutes' in data) || (data.bonusMinutes is int && data.bonusMinutes >= 0 && data.bonusMinutes <= 120)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidDayHistory(data) {
+      return data.dateIso is string && isValidId(data.dateIso) &&
+             data.userId is string && data.userId == request.auth.uid &&
+             (!('dayLabel' in data) || (data.dayLabel is string && data.dayLabel.size() <= 10)) &&
+             data.steps is int && data.steps >= 0 &&
+             data.earnedMinutes is int && data.earnedMinutes >= 0 &&
+             data.spentMinutes is int && data.spentMinutes >= 0 &&
+             (!('goalReached' in data) || data.goalReached is bool) &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(userId) &&
+                       incoming().keys().hasAll(['userId', 'email', 'createdAt', 'updatedAt']) &&
+                       isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUser(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'email', 'displayName', 'activeProfileId', 'lifetimeSteps',
+                         'lifetimeXp', 'currentStreak', 'bestStreak', 'updatedAt'
+                       ]);
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /profiles/{profileId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(profileId);
+        allow list: if isOwner(userId) && isValidId(userId);
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(profileId) &&
+                         incoming().profileId == profileId &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll(['profileId', 'userId', 'name', 'stepsPerMinute', 'dailyStepGoal', 'createdAt', 'updatedAt']) &&
+                         isValidUserProfile(incoming());
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(profileId) &&
+                         incoming().profileId == existing().profileId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidUserProfile(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'name', 'emoji', 'colorHex', 'dailySteps', 'bankedSeconds',
+                           'stepsPerMinute', 'dailyStepGoal', 'bonusMinutes', 'updatedAt'
+                         ]);
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(profileId);
+      }
+
+      match /history/{dateIso} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(dateIso);
+        allow list: if isOwner(userId) && isValidId(userId);
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(dateIso) &&
+                         incoming().dateIso == dateIso &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll(['dateIso', 'userId', 'steps', 'earnedMinutes', 'spentMinutes', 'updatedAt']) &&
+                         isValidDayHistory(incoming());
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(dateIso) &&
+                         incoming().dateIso == existing().dateIso &&
+                         incoming().userId == existing().userId &&
+                         isValidDayHistory(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'dayLabel', 'steps', 'earnedMinutes', 'spentMinutes', 'goalReached', 'updatedAt'
+                         ]);
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(dateIso);
+      }
+    }
+  }
+}

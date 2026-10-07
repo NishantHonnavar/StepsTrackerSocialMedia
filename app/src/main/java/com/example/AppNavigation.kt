@@ -15,6 +15,7 @@ sealed class AppRoute(val routeKey: String) {
     object ProfileSelection : AppRoute("profiles")
     object Trends : AppRoute("trends")
     object Achievements : AppRoute("achievements")
+    object WebCompanion : AppRoute("web_companion")
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
