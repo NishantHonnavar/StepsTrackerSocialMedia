@@ -1,5 +1,6 @@
 package com.example
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -87,6 +88,14 @@ fun ProfileSelectionScreen(
     val state by StepLockRepository.state.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
 
+    // Prevent exiting to Android home launcher on back press; navigate to dashboard
+    BackHandler {
+        val targetId = state.activeProfileId.ifBlank {
+            state.profiles.firstOrNull()?.id ?: "default"
+        }
+        onProfileSelected(targetId)
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxSize()
@@ -124,27 +133,26 @@ fun ProfileSelectionScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(CyanAccent),
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(Color(0xFFFFB800), CyanAccent)
+                                    )
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.DirectionsRun,
-                                contentDescription = null,
-                                tint = BackgroundDark,
-                                modifier = Modifier.size(24.dp)
-                            )
+                            Text(text = "⚡", fontSize = 20.sp)
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "StepLock",
+                                text = "Scroll Tax",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Black,
                                 color = TextPrimaryDark
                             )
                             Text(
-                                text = "Choose Profile",
-                                fontSize = 12.sp,
+                                text = "Pay Tax In Steps • Choose Profile",
+                                fontSize = 11.sp,
                                 color = CyanAccent,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -365,8 +373,14 @@ fun ProfileCardItem(
                             }
                         }
                         Text(
-                            text = "Rate: ${profile.stepsPerMinute} steps = 1 min",
-                            fontSize = 12.sp,
+                            text = "${profile.rank.badgeEmoji} Level ${profile.rank.level} • ${profile.rank.title}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(profile.rank.colorHex)
+                        )
+                        Text(
+                            text = "Rate: ${profile.stepsPerMinute} steps = 1 min • ${profile.lifetimeSteps} lifetime steps",
+                            fontSize = 11.sp,
                             color = TextSecondaryDark
                         )
                     }

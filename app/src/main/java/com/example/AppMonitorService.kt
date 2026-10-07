@@ -10,9 +10,18 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.PixelFormat
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.provider.Settings
 import android.util.Log
+import android.view.Gravity
+import android.view.WindowManager
+import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,7 +40,6 @@ class AppMonitorService : Service() {
 
         const val ACTION_START = "ACTION_START_MONITOR"
         const val ACTION_STOP = "ACTION_STOP_MONITOR"
-        const val ACTION_SIMULATE_STEPS = "ACTION_SIMULATE_STEPS"
 
         fun start(context: Context) {
             val intent = Intent(context, AppMonitorService::class.java).apply {
@@ -56,6 +64,10 @@ class AppMonitorService : Service() {
     private var monitorJob: Job? = null
     private var stepSensorManager: StepSensorManager? = null
 
+    private var floatingBubbleView: TextView? = null
+    private var windowManager: WindowManager? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     override fun onCreate() {
         super.onCreate()
         StepLockRepository.init(this)
@@ -71,11 +83,6 @@ class AppMonitorService : Service() {
                 stopSelf()
                 return START_NOT_STICKY
             }
-            ACTION_SIMULATE_STEPS -> {
-                StepLockRepository.addSteps(100)
-                updateNotification()
-                return START_STICKY
-            }
             else -> {
                 startForegroundMonitoring()
             }
@@ -87,15 +94,24 @@ class AppMonitorService : Service() {
         StepLockRepository.setServiceRunning(true)
         val initialNotification = buildNotification()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                } else {
+                    0
+                }
+                startForeground(NOTIFICATION_ID, initialNotification, fgsType)
             } else {
-                0
+                startForeground(NOTIFICATION_ID, initialNotification)
             }
-            startForeground(NOTIFICATION_ID, initialNotification, fgsType)
-        } else {
-            startForeground(NOTIFICATION_ID, initialNotification)
+        } catch (e: Exception) {
+            Log.e("AppMonitorService", "Failed to startForeground: ${e.message}", e)
+            try {
+                startForeground(NOTIFICATION_ID, initialNotification)
+            } catch (inner: Exception) {
+                Log.e("AppMonitorService", "Fallback startForeground failed: ${inner.message}", inner)
+            }
         }
 
         if (monitorJob == null || monitorJob?.isActive == false) {
@@ -114,10 +130,14 @@ class AppMonitorService : Service() {
         stepSensorManager?.stopListening()
         StepLockRepository.setServiceRunning(false)
         StepLockRepository.setInstagramActive(false)
+        mainHandler.post { removeFloatingBubble() }
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     private fun checkForegroundAppAndEnforceLock() {
+        // Enforce daily morning lock and date rollover 24/7 in background
+        StepLockRepository.checkDailyMidnightOrMorningReset()
+
         val currentForegroundApp = getActiveForegroundPackage()
         val isInstagramForeground = currentForegroundApp == TARGET_PACKAGE
         StepLockRepository.setInstagramActive(isInstagramForeground)
@@ -126,15 +146,89 @@ class AppMonitorService : Service() {
 
         if (isInstagramForeground) {
             if (state.bankedSeconds <= 0) {
-                // Banked time is exhausted or 0 -> Enforce Lock!
+                // Banked time is exhausted or 0 -> Remove bubble & Enforce Lock!
+                mainHandler.post { removeFloatingBubble() }
                 launchLockScreenActivity()
             } else {
                 // Instagram is actively being used with valid banked screen time -> deduct 1 second per second
                 StepLockRepository.consumeScreenTime(1)
+                mainHandler.post { updateFloatingBubble(state, isInstagramForeground = true) }
             }
+        } else {
+            mainHandler.post { removeFloatingBubble() }
         }
 
         updateNotification()
+    }
+
+    private fun updateFloatingBubble(state: StepLockData, isInstagramForeground: Boolean) {
+        if (!Settings.canDrawOverlays(this)) return
+
+        if (windowManager == null) {
+            windowManager = getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+        }
+
+        if (isInstagramForeground && state.bankedSeconds > 0) {
+            val bubbleText = "⚡ %02d:%02d".format(state.bankedMinutes, state.bankedSecondsRemainder)
+            if (floatingBubbleView == null) {
+                val tv = TextView(this).apply {
+                    text = bubbleText
+                    setTextColor(android.graphics.Color.WHITE)
+                    textSize = 12f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setPadding(30, 14, 30, 14)
+                    background = GradientDrawable().apply {
+                        shape = GradientDrawable.RECTANGLE
+                        cornerRadius = 40f
+                        setColor(android.graphics.Color.parseColor("#E6141C28"))
+                        setStroke(2, android.graphics.Color.parseColor("#00E5FF"))
+                    }
+                }
+
+                val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                } else {
+                    @Suppress("DEPRECATION")
+                    WindowManager.LayoutParams.TYPE_PHONE
+                }
+
+                val params = WindowManager.LayoutParams(
+                    WindowManager.LayoutParams.WRAP_CONTENT,
+                    WindowManager.LayoutParams.WRAP_CONTENT,
+                    layoutType,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                    PixelFormat.TRANSLUCENT
+                ).apply {
+                    gravity = Gravity.TOP or Gravity.END
+                    x = 36
+                    y = 120
+                }
+
+                try {
+                    windowManager?.addView(tv, params)
+                    floatingBubbleView = tv
+                } catch (e: Exception) {
+                    Log.w("AppMonitorService", "Failed to add floating bubble: ${e.message}")
+                }
+            } else {
+                floatingBubbleView?.text = bubbleText
+            }
+        } else {
+            removeFloatingBubble()
+        }
+    }
+
+    private fun removeFloatingBubble() {
+        floatingBubbleView?.let {
+            try {
+                windowManager?.removeView(it)
+            } catch (e: Exception) {
+                // View may already be removed
+            }
+            floatingBubbleView = null
+        }
     }
 
     private fun launchLockScreenActivity() {
@@ -157,7 +251,6 @@ class AppMonitorService : Service() {
         val endTime = System.currentTimeMillis()
         val beginTime = endTime - 10_000 // Query last 10 seconds
 
-        // Primary: Query usage events
         try {
             val events = usageStatsManager.queryEvents(beginTime, endTime)
             var lastEventPackage: String? = null
@@ -176,7 +269,6 @@ class AppMonitorService : Service() {
             Log.w("AppMonitorService", "Error querying events: ${e.message}")
         }
 
-        // Secondary fallback: queryUsageStats
         try {
             val statsList = usageStatsManager.queryUsageStats(
                 UsageStatsManager.INTERVAL_DAILY,
@@ -203,34 +295,26 @@ class AppMonitorService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Action to quickly simulate 100 steps
-        val walkIntent = Intent(this, AppMonitorService::class.java).apply {
-            action = ACTION_SIMULATE_STEPS
-        }
-        val pendingWalk = PendingIntent.getService(
-            this,
-            1,
-            walkIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
         val title = if (state.isInstagramActive) {
-            if (state.bankedSeconds > 0) "Instagram Active (${state.activeProfile.name})" else "Instagram Locked (${state.activeProfile.name})"
+            if (state.bankedSeconds > 0) "Instagram Active (${state.activeProfile.name})" else "Scroll Tax Due • Instagram Locked"
         } else {
-            "StepLock Active • ${state.activeProfile.name}"
+            "Scroll Tax Active • ${state.activeProfile.name}"
         }
 
         val content = if (state.isInstagramActive) {
             if (state.bankedSeconds > 0) {
-                "Banked Vault: ${state.bankedMinutes}m ${state.bankedSecondsRemainder}s remaining"
+                "Time remaining: ${state.bankedMinutes}m ${state.bankedSecondsRemainder}s"
             } else {
-                "Time expired! Take ${state.stepsPerMinute} steps to earn 1 minute."
+                "Locked: Walk ${state.stepsToNextMinute} more steps to unlock 1 minute"
             }
         } else {
-            "Vault: ${state.bankedMinutes}m ${state.bankedSecondsRemainder}s • ${state.dailySteps} steps today"
+            "Today: %,d steps • Vault: %dm %ds available".format(
+                state.dailySteps,
+                state.bankedMinutes,
+                state.bankedSecondsRemainder
+            )
         }
 
-        // High priority lock full screen intent when locked
         val lockIntent = Intent(this, LockScreenActivity::class.java)
         val pendingLock = PendingIntent.getActivity(
             this,
@@ -246,7 +330,6 @@ class AppMonitorService : Service() {
             .setContentIntent(pendingOpenApp)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .addAction(0, "+100 Steps", pendingWalk)
 
         if (state.isInstagramActive && state.bankedSeconds <= 0) {
             builder.setFullScreenIntent(pendingLock, true)
@@ -265,7 +348,7 @@ class AppMonitorService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "StepLock Monitor",
+                "Scroll Tax Monitor",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Monitors Instagram screen time and physical steps"

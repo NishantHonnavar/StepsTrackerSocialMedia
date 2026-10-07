@@ -1,5 +1,6 @@
 package com.example
 
+import org.json.JSONArray
 import org.json.JSONObject
 
 data class UserProfile(
@@ -15,7 +16,14 @@ data class UserProfile(
     val targetApp: String = "com.instagram.android",
     val dailyStepGoal: Int = 6000, // Daily step goal (e.g. 6,000 steps)
     val bonusMinutes: Int = 15, // Bonus minutes granted on hitting the goal
-    val hasClaimedGoalBonus: Boolean = false
+    val hasClaimedGoalBonus: Boolean = false,
+    val currentStreak: Int = 1,
+    val bestStreak: Int = 1,
+    val goldenHourSteps: Int = 0,
+    val unlockedAchievementIds: Set<String> = emptySet(),
+    val lifetimeSteps: Long = 0L,
+    val lifetimeXp: Long = 0L,
+    val lastCelebratedRankLevel: Int = 1
 ) {
     val bankedMinutes: Int get() = bankedSeconds / 60
     val bankedSecondsRemainder: Int get() = bankedSeconds % 60
@@ -36,6 +44,11 @@ data class UserProfile(
     val goalPercentage: Int get() = (goalProgress * 100).toInt()
     val stepsRemainingToGoal: Int get() = (dailyStepGoal - dailySteps).coerceAtLeast(0)
 
+    // Experience Points (XP) & Rank Progression
+    val rank: UserRank get() = UserRank.fromXp(lifetimeXp)
+    val rankProgress: Float get() = rank.progressFraction(lifetimeXp)
+    val xpNeededForNextRank: Long get() = rank.xpNeededForNextLevel(lifetimeXp)
+
     fun toJsonObject(): JSONObject {
         return JSONObject().apply {
             put("id", id)
@@ -51,17 +64,38 @@ data class UserProfile(
             put("dailyStepGoal", dailyStepGoal)
             put("bonusMinutes", bonusMinutes)
             put("hasClaimedGoalBonus", hasClaimedGoalBonus)
+            put("currentStreak", currentStreak)
+            put("bestStreak", bestStreak)
+            put("goldenHourSteps", goldenHourSteps)
+            put("lifetimeSteps", lifetimeSteps)
+            put("lifetimeXp", lifetimeXp)
+            put("lastCelebratedRankLevel", lastCelebratedRankLevel)
+            val jsonArray = JSONArray()
+            unlockedAchievementIds.forEach { jsonArray.put(it) }
+            put("unlockedAchievementIds", jsonArray)
         }
     }
 
     companion object {
         fun fromJsonObject(json: JSONObject): UserProfile {
+            val achievementsSet = mutableSetOf<String>()
+            val achievementsArray = json.optJSONArray("unlockedAchievementIds")
+            if (achievementsArray != null) {
+                for (i in 0 until achievementsArray.length()) {
+                    achievementsSet.add(achievementsArray.getString(i))
+                }
+            }
+
+            val daily = json.optInt("dailySteps", 0)
+            val lifetimeStepsFallback = json.optLong("lifetimeSteps", daily.toLong())
+            val lifetimeXpFallback = json.optLong("lifetimeXp", lifetimeStepsFallback)
+
             return UserProfile(
                 id = json.optString("id", "default"),
                 name = json.optString("name", "Personal"),
                 emoji = json.optString("emoji", "🏃"),
                 colorHex = json.optLong("colorHex", 0xFF00E5FF),
-                dailySteps = json.optInt("dailySteps", 0),
+                dailySteps = daily,
                 bankedSeconds = json.optInt("bankedSeconds", 120),
                 stepsPerMinute = json.optInt("stepsPerMinute", 100),
                 totalEarnedSeconds = json.optInt("totalEarnedSeconds", 120),
@@ -69,7 +103,14 @@ data class UserProfile(
                 targetApp = json.optString("targetApp", "com.instagram.android"),
                 dailyStepGoal = json.optInt("dailyStepGoal", 6000),
                 bonusMinutes = json.optInt("bonusMinutes", 15),
-                hasClaimedGoalBonus = json.optBoolean("hasClaimedGoalBonus", false)
+                hasClaimedGoalBonus = json.optBoolean("hasClaimedGoalBonus", false),
+                currentStreak = json.optInt("currentStreak", 1),
+                bestStreak = json.optInt("bestStreak", 1),
+                goldenHourSteps = json.optInt("goldenHourSteps", 0),
+                unlockedAchievementIds = achievementsSet,
+                lifetimeSteps = lifetimeStepsFallback,
+                lifetimeXp = lifetimeXpFallback,
+                lastCelebratedRankLevel = json.optInt("lastCelebratedRankLevel", 1)
             )
         }
 
@@ -81,11 +122,16 @@ data class UserProfile(
                     emoji = "🏃",
                     colorHex = 0xFF00E5FF,
                     dailySteps = 0,
-                    bankedSeconds = 120, // 2 mins banked
-                    stepsPerMinute = 100, // 100 steps = 1 min
+                    bankedSeconds = 120,
+                    stepsPerMinute = 100,
                     totalEarnedSeconds = 120,
                     dailyStepGoal = 6000,
-                    bonusMinutes = 15
+                    bonusMinutes = 15,
+                    currentStreak = 2,
+                    bestStreak = 4,
+                    lifetimeSteps = 8450L,
+                    lifetimeXp = 8450L,
+                    lastCelebratedRankLevel = 4
                 ),
                 UserProfile(
                     id = "profile_detox",
@@ -93,11 +139,16 @@ data class UserProfile(
                     emoji = "⚡",
                     colorHex = 0xFFFF4D4F,
                     dailySteps = 0,
-                    bankedSeconds = 0, // starts locked
-                    stepsPerMinute = 150, // 150 steps = 1 min
+                    bankedSeconds = 0,
+                    stepsPerMinute = 150,
                     totalEarnedSeconds = 0,
                     dailyStepGoal = 8000,
-                    bonusMinutes = 20
+                    bonusMinutes = 20,
+                    currentStreak = 1,
+                    bestStreak = 3,
+                    lifetimeSteps = 3800L,
+                    lifetimeXp = 3800L,
+                    lastCelebratedRankLevel = 3
                 ),
                 UserProfile(
                     id = "profile_chill",
@@ -105,11 +156,17 @@ data class UserProfile(
                     emoji = "🌿",
                     colorHex = 0xFF10B981,
                     dailySteps = 0,
-                    bankedSeconds = 300, // 5 mins banked
-                    stepsPerMinute = 80, // 80 steps = 1 min
+                    bankedSeconds = 300,
+                    stepsPerMinute = 80,
                     totalEarnedSeconds = 300,
                     dailyStepGoal = 4000,
-                    bonusMinutes = 10
+                    bonusMinutes = 10,
+                    currentStreak = 5,
+                    bestStreak = 7,
+                    unlockedAchievementIds = setOf("first_step", "streak_3"),
+                    lifetimeSteps = 650L,
+                    lifetimeXp = 650L,
+                    lastCelebratedRankLevel = 1
                 )
             )
         }

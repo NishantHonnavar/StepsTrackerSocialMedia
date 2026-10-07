@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "StepLock"
+rootProject.name = "Scroll Tax"
 
 include(":app")

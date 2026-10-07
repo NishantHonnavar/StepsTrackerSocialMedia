@@ -1,6 +1,6 @@
 {
-  "name": "StepLock",
-  "description": "Smart physical activity screen-time lock. Earn Instagram access by walking, monitored in real time.",
+  "name": "Scroll Tax",
+  "description": "Smart physical activity screen-time lock. Pay your scroll tax in steps to earn Instagram screen time.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

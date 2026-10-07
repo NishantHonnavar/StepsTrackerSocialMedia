@@ -6,63 +6,49 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Lock Shackle -->
+    <!-- Minimalist Geometric Emblem: Kinetic Stride + Digital Shield Lock -->
+    <!-- Safe zone: 21 to 87 -->
+
+    <!-- Outer Minimalist Shield Contour (Stroke) -->
     <path
-        android:fillColor="#00000000"
-        android:pathData="M42,48 V39 C42,32.37 47.37,27 54,27 C60.63,27 66,32.37 66,39 V48"
-        android:strokeWidth="6"
-        android:strokeLineCap="round">
+        android:pathData="M54,26 C66,26 76,33 76,46 C76,64 54,82 54,82 C54,82 32,64 32,46 C32,33 42,26 54,26 Z"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round">
         <aapt:attr name="android:strokeColor">
             <gradient
-                android:startX="42"
-                android:startY="27"
-                android:endX="66"
-                android:endY="48"
+                android:startX="32"
+                android:startY="26"
+                android:endX="76"
+                android:endY="82"
                 android:type="linear">
-                <item android:offset="0.0" android:color="#38BDF8" />
-                <item android:offset="1.0" android:color="#06B6D4" />
+                <item android:offset="0.0" android:color="#00E5FF" />
+                <item android:offset="1.0" android:color="#00B0FF" />
             </gradient>
         </aapt:attr>
     </path>
 
-    <!-- Lock Body with rounded corners -->
+    <!-- Sleek Minimalist Stride Bolt in Center -->
     <path
-        android:pathData="M35,46 H73 C76.3,46 79,48.7 79,52 V75 C79,78.3 76.3,81 73,81 H35 C31.7,81 29,78.3 29,75 V52 C29,48.7 31.7,46 35,46 Z">
+        android:pathData="M57,35 L45,51 L53,51 L51,69 L63,53 L55,53 Z"
+        android:strokeWidth="1.5"
+        android:strokeColor="#FFFFFF">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:startX="29"
-                android:startY="46"
-                android:endX="79"
-                android:endY="81"
+                android:startX="45"
+                android:startY="35"
+                android:endX="63"
+                android:endY="69"
                 android:type="linear">
-                <item android:offset="0.0" android:color="#0284C7" />
-                <item android:offset="1.0" android:color="#0F766E" />
+                <item android:offset="0.0" android:color="#FFFFFF" />
+                <item android:offset="0.6" android:color="#00E5FF" />
+                <item android:offset="1.0" android:color="#00E699" />
             </gradient>
         </aapt:attr>
     </path>
 
-    <!-- Runner / Footstep silhouette cutout in the lock body -->
-    <!-- Runner Head -->
+    <!-- Subtle Minimalist Accent Dots -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,54.5 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0" />
-
-    <!-- Runner Body and Legs (Dynamic sprint) -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M52.5,58 L55,57.5 L57,61.5 L53.5,62.5 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M53.5,61.5 L50.5,66.5 L48,65.5 L51.5,60.5 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M55,61 L58.5,67 L61.5,67.5 L57.5,60 Z" />
-
-    <!-- Motion trails -->
-    <path
-        android:fillColor="#38BDF8"
-        android:pathData="M43,73 L49,73 L47.5,75 L41.5,75 Z" />
-    <path
-        android:fillColor="#38BDF8"
-        android:pathData="M46,70 L51,70 L49.5,72 L44.5,72 Z" />
+        android:fillColor="#00E5FF"
+        android:pathData="M54,75m-2.5,0a2.5,2.5 0,1,1 5,0a2.5,2.5 0,1,1 -5,0" />
 </vector>

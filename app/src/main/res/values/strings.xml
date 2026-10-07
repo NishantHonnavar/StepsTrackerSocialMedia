@@ -1,8 +1,8 @@
 <resources>
-    <string name="app_name">StepLock</string>
+    <string name="app_name">Scroll Tax</string>
     <string name="instagram_locked_title">Instagram Locked!</string>
-    <string name="instagram_locked_subtitle">Walk to earn screen time. Every 100 steps earns 1 minute of access.</string>
+    <string name="instagram_locked_subtitle">Pay your scroll tax in steps! Walk to earn screen time.</string>
     <string name="return_home">Return to Home Screen</string>
-    <string name="simulate_step_walk">Quick Walk (+100 steps)</string>
-    <string name="monitoring_service_running">StepLock Active: Monitoring screen time</string>
+    <string name="simulate_step_walk">Pay Tax (+100 steps)</string>
+    <string name="monitoring_service_running">Scroll Tax Active: Enforcing step taxes</string>
 </resources>
