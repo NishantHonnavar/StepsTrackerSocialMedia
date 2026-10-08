@@ -122,6 +122,32 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 var showInstagramOptionsDialog by remember { mutableStateOf(false) }
 
+                val activityRecognitionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission()
+                ) { granted ->
+                    StepLockRepository.syncPermissions(context)
+                    if (granted) {
+                        stepSensorManager?.startListening()
+                        Toast.makeText(context, "Step recording active!", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                // Automatically trigger foot step recording permission directly upon launch
+                LaunchedEffect(Unit) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !state.hasActivityPermission) {
+                        activityRecognitionLauncher.launch(android.Manifest.permission.ACTIVITY_RECOGNITION)
+                    }
+                }
+
+                val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission()
+                ) { granted ->
+                    StepLockRepository.syncPermissions(context)
+                    if (granted) {
+                        Toast.makeText(context, "Notification permission granted!", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
                 // GLOBAL NAVIGATION CONTROLLER BACK-HANDLER:
                 // When moving between levels, roadmap, settings, trends, or achievements,
                 // pressing Back navigates back through the stack to the Dashboard, NEVER exiting the app.
@@ -223,10 +249,18 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 onRequestActivityPermission = {
-                                    // Handled in settings UI
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                        activityRecognitionLauncher.launch(android.Manifest.permission.ACTIVITY_RECOGNITION)
+                                    } else {
+                                        Toast.makeText(context, "Activity Recognition automatically granted on this Android version", Toast.LENGTH_SHORT).show()
+                                    }
                                 },
                                 onRequestNotificationPermission = {
-                                    // Handled in settings UI
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                    } else {
+                                        Toast.makeText(context, "Notifications automatically granted on this Android version", Toast.LENGTH_SHORT).show()
+                                    }
                                 },
                                 onSwitchProfileClick = {
                                     navController.navigateTo(AppRoute.ProfileSelection)

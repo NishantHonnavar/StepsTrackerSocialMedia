@@ -318,20 +318,20 @@ fun CompactRankBadge(
     val rankColor = Color(rank.colorHex)
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(SurfaceDark)
-            .border(1.dp, rankColor.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+            .border(1.dp, rankColor.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 7.dp)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
             .testTag("compact_rank_badge"),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = rank.badgeEmoji, fontSize = 14.sp)
-        Spacer(modifier = Modifier.width(6.dp))
+        Text(text = rank.badgeEmoji, fontSize = 13.sp)
+        Spacer(modifier = Modifier.width(4.dp))
         Text(
-            text = "LVL ${rank.level} • ${rank.title}",
+            text = "L${rank.level}",
             fontSize = 11.sp,
-            fontWeight = FontWeight.ExtraBold,
+            fontWeight = FontWeight.Black,
             color = rankColor
         )
     }

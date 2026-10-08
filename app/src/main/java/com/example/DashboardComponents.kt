@@ -645,7 +645,8 @@ fun RankLevelSwitcherBar(
             1.dp,
             Brush.horizontalGradient(
                 listOf(
-                    tierColor.copy(alpha = 0.5f),
+                    tierColor.copy(alpha = 0.6f),
+                    ElectricCyan.copy(alpha = 0.3f),
                     InnerCardBorder
                 )
             )
@@ -654,7 +655,7 @@ fun RankLevelSwitcherBar(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp)
+                .padding(14.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -662,24 +663,50 @@ fun RankLevelSwitcherBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = currentRank.badgeEmoji, fontSize = 16.sp)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "LEVEL ${currentRank.level}: ${currentRank.title.uppercase()}",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Black,
-                        color = tierColor,
-                        letterSpacing = 1.sp
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(tierColor.copy(alpha = 0.2f))
+                            .border(1.dp, tierColor, RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = currentRank.badgeEmoji, fontSize = 14.sp)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "LEVEL ${currentRank.level}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                color = tierColor,
+                                letterSpacing = 0.8.sp
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "•  ${currentRank.title}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                        }
+                        Text(
+                            text = currentRank.rankPerk,
+                            fontSize = 10.sp,
+                            color = TextSecondary,
+                            maxLines = 1
+                        )
+                    }
                 }
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(InnerCardBorder.copy(alpha = 0.5f))
+                        .background(InnerCardBorder.copy(alpha = 0.6f))
                         .clickable { onOpenRoadmap() }
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = "Roadmap",
@@ -687,6 +714,7 @@ fun RankLevelSwitcherBar(
                         fontWeight = FontWeight.Bold,
                         color = ElectricCyan
                     )
+                    Spacer(modifier = Modifier.width(2.dp))
                     Icon(
                         imageVector = Icons.Default.ChevronRight,
                         contentDescription = "Open Roadmap",
@@ -696,9 +724,9 @@ fun RankLevelSwitcherBar(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Horizontal interactive row with all 6 tiers
+            // Horizontal interactive row with all 6 tiers with clean badges
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -713,8 +741,8 @@ fun RankLevelSwitcherBar(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .background(
-                                if (isSelected) rankColor.copy(alpha = 0.22f)
-                                else InnerCardBorder.copy(alpha = 0.5f)
+                                if (isSelected) rankColor.copy(alpha = 0.25f)
+                                else InnerCardBorder.copy(alpha = 0.45f)
                             )
                             .border(
                                 width = if (isSelected) 1.5.dp else 1.dp,
@@ -722,15 +750,15 @@ fun RankLevelSwitcherBar(
                                 shape = RoundedCornerShape(12.dp)
                             )
                             .clickable { onSelectRank(rank) }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = rank.badgeEmoji, fontSize = 13.sp)
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(text = rank.badgeEmoji, fontSize = 14.sp)
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "L${rank.level} ${rank.title.split(" ").first()}",
-                                fontSize = 11.sp,
+                                text = "L${rank.level} ${rank.title}",
+                                fontSize = 12.sp,
                                 fontWeight = if (isSelected) FontWeight.Black else FontWeight.SemiBold,
                                 color = if (isSelected) rankColor else TextSecondary
                             )
@@ -1013,6 +1041,47 @@ fun TodayMovementHeroCard(
                         fontWeight = FontWeight.Bold,
                         color = accentColor
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // Quick Step Action Row: Instant test steps buttons & sensor live status
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(
+                    onClick = { StepLockRepository.addSteps(100) },
+                    modifier = Modifier.weight(1f).height(38.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, ElectricCyan.copy(alpha = 0.6f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ElectricCyan),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Text("+100 Steps", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+
+                OutlinedButton(
+                    onClick = { StepLockRepository.addSteps(500) },
+                    modifier = Modifier.weight(1f).height(38.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldNeon.copy(alpha = 0.6f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = EmeraldNeon),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Text("+500 Steps", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Button(
+                    onClick = { StepLockRepository.addSteps(1000) },
+                    modifier = Modifier.weight(1f).height(38.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan, contentColor = DeepVoidNavy),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Text("+1,000 ⚡", fontSize = 11.sp, fontWeight = FontWeight.Black)
                 }
             }
         }

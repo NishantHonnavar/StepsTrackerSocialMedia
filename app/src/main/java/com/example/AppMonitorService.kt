@@ -20,6 +20,8 @@ import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
@@ -171,20 +173,6 @@ class AppMonitorService : Service() {
         if (isInstagramForeground && state.bankedSeconds > 0) {
             val bubbleText = "⚡ %02d:%02d".format(state.bankedMinutes, state.bankedSecondsRemainder)
             if (floatingBubbleView == null) {
-                val tv = TextView(this).apply {
-                    text = bubbleText
-                    setTextColor(android.graphics.Color.WHITE)
-                    textSize = 12f
-                    typeface = Typeface.DEFAULT_BOLD
-                    setPadding(30, 14, 30, 14)
-                    background = GradientDrawable().apply {
-                        shape = GradientDrawable.RECTANGLE
-                        cornerRadius = 40f
-                        setColor(android.graphics.Color.parseColor("#E6141C28"))
-                        setStroke(2, android.graphics.Color.parseColor("#00E5FF"))
-                    }
-                }
-
                 val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
                 } else {
@@ -192,18 +180,67 @@ class AppMonitorService : Service() {
                     WindowManager.LayoutParams.TYPE_PHONE
                 }
 
+                // Place in the bottom-center empty area (above Instagram bottom nav bar: y = 200dp)
+                // This completely clears top-right notification & direct message icons!
                 val params = WindowManager.LayoutParams(
                     WindowManager.LayoutParams.WRAP_CONTENT,
                     WindowManager.LayoutParams.WRAP_CONTENT,
                     layoutType,
                     WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                     PixelFormat.TRANSLUCENT
                 ).apply {
-                    gravity = Gravity.TOP or Gravity.END
-                    x = 36
-                    y = 120
+                    gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                    x = 0
+                    y = 210 // Placed comfortably above Instagram's bottom navigation bar
+                }
+
+                val tv = TextView(this).apply {
+                    text = bubbleText
+                    setTextColor(android.graphics.Color.WHITE)
+                    textSize = 12f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setPadding(32, 14, 32, 14)
+                    elevation = 16f
+                    background = GradientDrawable().apply {
+                        shape = GradientDrawable.RECTANGLE
+                        cornerRadius = 40f
+                        setColor(android.graphics.Color.parseColor("#E60A0F1D"))
+                        setStroke(2, android.graphics.Color.parseColor("#00E5FF"))
+                    }
+
+                    // Enable free dragging so user can position anywhere on screen
+                    setOnTouchListener(object : View.OnTouchListener {
+                        private var initialX = 0
+                        private var initialY = 0
+                        private var initialTouchX = 0f
+                        private var initialTouchY = 0f
+
+                        override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+                            if (event == null) return false
+                            when (event.action) {
+                                MotionEvent.ACTION_DOWN -> {
+                                    initialX = params.x
+                                    initialY = params.y
+                                    initialTouchX = event.rawX
+                                    initialTouchY = event.rawY
+                                    return true
+                                }
+                                MotionEvent.ACTION_MOVE -> {
+                                    params.x = initialX + (event.rawX - initialTouchX).toInt()
+                                    // With Gravity.BOTTOM, decreasing rawY moves the view upward
+                                    params.y = initialY - (event.rawY - initialTouchY).toInt()
+                                    try {
+                                        windowManager?.updateViewLayout(v, params)
+                                    } catch (e: Exception) {
+                                        // Ignore update during transition
+                                    }
+                                    return true
+                                }
+                            }
+                            return false
+                        }
+                    })
                 }
 
                 try {

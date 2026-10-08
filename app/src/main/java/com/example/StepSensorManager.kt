@@ -17,12 +17,13 @@ class StepSensorManager(private val context: Context) : SensorEventListener {
 
     private var previousStepCounterValue: Float = -1f
     private var isListening = false
+    private var hasReceivedHardwareSteps = false
 
-    // Accelerometer peak detection variables for fallback background counting
+    // Accelerometer peak detection variables for responsive fallback background counting
     private var lastAccelMagnitude: Float = 9.8f
     private var lastStepTimestamp: Long = 0L
-    private val stepThresholdHigh = 11.8f
-    private val stepThresholdLow = 9.2f
+    private val stepThresholdHigh = 11.2f // Tuned for higher sensitivity to normal walking
+    private val stepThresholdLow = 9.4f
     private var isPeakWaitingForValley = false
 
     init {
@@ -37,6 +38,7 @@ class StepSensorManager(private val context: Context) : SensorEventListener {
             ?: "Scroll Tax Sensor Engine"
 
         StepLockRepository.setStepSensorInfo(hasHardwareSensor || accelerometerSensor != null, sensorName)
+        Log.d("StepSensorManager", "Initialized with sensor: $sensorName (HW: $hasHardwareSensor)")
     }
 
     fun startListening() {
@@ -48,7 +50,7 @@ class StepSensorManager(private val context: Context) : SensorEventListener {
             val success = sensorManager.registerListener(
                 this,
                 sensor,
-                SensorManager.SENSOR_DELAY_NORMAL
+                SensorManager.SENSOR_DELAY_UI
             )
             if (success) registered = true
         }
@@ -58,23 +60,23 @@ class StepSensorManager(private val context: Context) : SensorEventListener {
             val success = sensorManager.registerListener(
                 this,
                 sensor,
-                SensorManager.SENSOR_DELAY_NORMAL
+                SensorManager.SENSOR_DELAY_UI
             )
             if (success) registered = true
         }
 
-        // Tertiary fallback: Accelerometer for guaranteed background step counting
+        // Tertiary fallback: Accelerometer for guaranteed background & emulator step counting
         accelerometerSensor?.let { sensor ->
             val success = sensorManager.registerListener(
                 this,
                 sensor,
-                SensorManager.SENSOR_DELAY_NORMAL
+                SensorManager.SENSOR_DELAY_GAME
             )
             if (success) registered = true
         }
 
         isListening = registered
-        Log.d("StepSensorManager", "Step sensors registered successfully (Background active): $isListening")
+        Log.d("StepSensorManager", "Step sensors registered successfully: $isListening")
     }
 
     fun stopListening() {
@@ -96,6 +98,7 @@ class StepSensorManager(private val context: Context) : SensorEventListener {
                 } else {
                     val delta = (totalStepsSinceBoot - previousStepCounterValue).toInt()
                     if (delta > 0 && delta < 5000) { // sanity check
+                        hasReceivedHardwareSteps = true
                         StepLockRepository.addSteps(delta)
                         previousStepCounterValue = totalStepsSinceBoot
                     }
@@ -104,13 +107,16 @@ class StepSensorManager(private val context: Context) : SensorEventListener {
 
             Sensor.TYPE_STEP_DETECTOR -> {
                 if (event.values.isNotEmpty() && event.values[0] == 1.0f) {
+                    hasReceivedHardwareSteps = true
                     StepLockRepository.addSteps(1)
                 }
             }
 
             Sensor.TYPE_ACCELEROMETER -> {
-                // If hardware step counter is actively delivering data, avoid double-counting
-                if (stepCounterSensor != null || stepDetectorSensor != null) return
+                // If a dedicated hardware step counter/detector is actively providing events,
+                // prioritize it to avoid duplicate counting. If not (e.g. emulators or devices without HW step FIFO),
+                // the accelerometer peak-valley detector immediately processes steps!
+                if (hasReceivedHardwareSteps) return
 
                 val x = event.values[0]
                 val y = event.values[1]
@@ -118,7 +124,8 @@ class StepSensorManager(private val context: Context) : SensorEventListener {
                 val magnitude = sqrt((x * x + y * y + z * z).toDouble()).toFloat()
 
                 val now = System.currentTimeMillis()
-                if (magnitude > stepThresholdHigh && !isPeakWaitingForValley && (now - lastStepTimestamp > 280)) {
+                // Cadence check: normal human walking is ~1.5 to 3 steps per second (min 240ms interval)
+                if (magnitude > stepThresholdHigh && !isPeakWaitingForValley && (now - lastStepTimestamp > 240)) {
                     isPeakWaitingForValley = true
                 } else if (magnitude < stepThresholdLow && isPeakWaitingForValley) {
                     isPeakWaitingForValley = false
