@@ -11,18 +11,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = CyanAccent,
-    onPrimary = BlueDark,
+    primary = ElectricCyan, // Purple Accent
+    onPrimary = TextPrimary,
     primaryContainer = CyanDeep,
     onPrimaryContainer = TextPrimaryDark,
-    secondary = EmeraldNeon,
-    onSecondary = BlueDark,
+    secondary = DeepLavender,
+    onSecondary = DeepVoidNavy,
     secondaryContainer = SurfaceVariantDark,
     onSecondaryContainer = TextPrimaryDark,
-    tertiary = WarningAmber,
-    background = BackgroundDark,
+    tertiary = NeonViolet,
+    background = DeepVoidNavy,
     onBackground = TextPrimaryDark,
-    surface = SurfaceDark,
+    surface = DarkSlateNavy,
     onSurface = TextPrimaryDark,
     surfaceVariant = SurfaceVariantDark,
     onSurfaceVariant = TextSecondaryDark,
@@ -33,13 +33,13 @@ private val DarkColorScheme = darkColorScheme(
 private val LightColorScheme = lightColorScheme(
     primary = CyanDeep,
     onPrimary = TextPrimaryDark,
-    primaryContainer = CyanAccent,
-    onPrimaryContainer = BlueDark,
-    secondary = UnlockGreen,
+    primaryContainer = ElectricCyan,
+    onPrimaryContainer = DeepVoidNavy,
+    secondary = VividPurple,
     onSecondary = TextPrimaryDark,
     secondaryContainer = SurfaceVariantLight,
     onSecondaryContainer = TextPrimaryLight,
-    tertiary = WarningAmber,
+    tertiary = NeonViolet,
     background = BackgroundLight,
     onBackground = TextPrimaryLight,
     surface = SurfaceLight,
@@ -52,7 +52,7 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun MyApplicationTheme(
-    darkTheme: Boolean = true, // StepLock is designed with an immersive high-tech dark theme by default
+    darkTheme: Boolean = true, // Black & Purple dark theme by default
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {

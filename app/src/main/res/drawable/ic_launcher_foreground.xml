@@ -6,49 +6,68 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Minimalist Geometric Emblem: Kinetic Stride + Digital Shield Lock -->
+    <!-- Professional Modern Minimalist Emblem: Geometric Vault Lock & Kinetic Stride -->
     <!-- Safe zone: 21 to 87 -->
 
-    <!-- Outer Minimalist Shield Contour (Stroke) -->
+    <!-- Padlock Outer Shackle (Curved Loop) -->
     <path
-        android:pathData="M54,26 C66,26 76,33 76,46 C76,64 54,82 54,82 C54,82 32,64 32,46 C32,33 42,26 54,26 Z"
-        android:strokeWidth="3.5"
+        android:pathData="M42,47 V38 C42,31.4 47.4,26 54,26 C60.6,26 66,31.4 66,38 V47"
+        android:strokeWidth="5.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round">
         <aapt:attr name="android:strokeColor">
             <gradient
-                android:startX="32"
+                android:startX="42"
                 android:startY="26"
-                android:endX="76"
-                android:endY="82"
+                android:endX="66"
+                android:endY="47"
                 android:type="linear">
-                <item android:offset="0.0" android:color="#00E5FF" />
-                <item android:offset="1.0" android:color="#00B0FF" />
+                <item android:offset="0.0" android:color="#C084FC" />
+                <item android:offset="1.0" android:color="#A855F7" />
             </gradient>
         </aapt:attr>
     </path>
 
-    <!-- Sleek Minimalist Stride Bolt in Center -->
+    <!-- Padlock Modern Geometric Body (Chamfered Vault Shield) -->
     <path
-        android:pathData="M57,35 L45,51 L53,51 L51,69 L63,53 L55,53 Z"
-        android:strokeWidth="1.5"
+        android:pathData="M33,47 H75 C77.2,47 79,48.8 79,51 V74 C79,79.5 74.5,84 69,84 H39 C33.5,84 29,79.5 29,74 V51 C29,48.8 30.8,47 33,47 Z"
+        android:strokeWidth="2.5"
+        android:strokeColor="#C084FC">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="29"
+                android:startY="47"
+                android:endX="79"
+                android:endY="84"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#1A102E" />
+                <item android:offset="0.5" android:color="#140D24" />
+                <item android:offset="1.0" android:color="#090611" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Kinetic Footstep Stride Arrow inside Lock Body -->
+    <path
+        android:pathData="M56,53 L47,66 L53,66 L51,77 L62,63 L56,63 Z"
+        android:strokeWidth="1.2"
         android:strokeColor="#FFFFFF">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:startX="45"
-                android:startY="35"
-                android:endX="63"
-                android:endY="69"
+                android:startX="47"
+                android:startY="53"
+                android:endX="62"
+                android:endY="77"
                 android:type="linear">
                 <item android:offset="0.0" android:color="#FFFFFF" />
-                <item android:offset="0.6" android:color="#00E5FF" />
-                <item android:offset="1.0" android:color="#00E699" />
+                <item android:offset="0.5" android:color="#D946EF" />
+                <item android:offset="1.0" android:color="#A855F7" />
             </gradient>
         </aapt:attr>
     </path>
 
-    <!-- Subtle Minimalist Accent Dots -->
+    <!-- Subtle Premium Dot Accent -->
     <path
-        android:fillColor="#00E5FF"
-        android:pathData="M54,75m-2.5,0a2.5,2.5 0,1,1 5,0a2.5,2.5 0,1,1 -5,0" />
+        android:fillColor="#A855F7"
+        android:pathData="M54,80m-1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0" />
 </vector>

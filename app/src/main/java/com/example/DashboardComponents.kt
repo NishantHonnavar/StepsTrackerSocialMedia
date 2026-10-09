@@ -56,6 +56,7 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Tune
@@ -780,6 +781,7 @@ fun TodayMovementHeroCard(
     dailyStepGoal: Int,
     currentRate: Int,
     period: TimeOfDayPeriod,
+    onShareClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val targetProgress = if (dailyStepGoal > 0) {
@@ -826,7 +828,7 @@ fun TodayMovementHeroCard(
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header row with title and goal badge
+            // Header row with title, goal badge and share button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -849,18 +851,39 @@ fun TodayMovementHeroCard(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(InnerCardBorder)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "${String.format(Locale.getDefault(), "%,d", dailySteps)} / ${String.format(Locale.getDefault(), "%,d", dailyStepGoal)}",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(InnerCardBorder)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "${String.format(Locale.getDefault(), "%,d", dailySteps)} / ${String.format(Locale.getDefault(), "%,d", dailyStepGoal)}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    IconButton(
+                        onClick = onShareClick,
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(accentColor.copy(alpha = 0.15f))
+                            .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            .testTag("share_daily_steps_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share Steps",
+                            tint = accentColor,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
             }
 
@@ -2009,6 +2032,7 @@ fun SettingsScreen(
     onRequestActivityPermission: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
     onSwitchProfileClick: () -> Unit,
+    onManageBlockedApps: () -> Unit = {},
     onTuneStepGoal: (Int) -> Unit,
     onSignInGoogle: () -> Unit = {},
     onSignOutGoogle: () -> Unit = {},
@@ -2377,6 +2401,24 @@ fun SettingsScreen(
                             )
                         }
                     }
+                }
+            }
+
+            item {
+                Button(
+                    onClick = onManageBlockedApps,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .testTag("manage_blocked_apps_button"),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan)
+                ) {
+                    Text(
+                        text = "Manage Blocked Apps (${state.blockedApps.count { it.isBlocked }} Active)",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
 

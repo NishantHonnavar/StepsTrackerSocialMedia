@@ -13,6 +13,10 @@ data class StepLockData(
     val hasNotificationPermission: Boolean = false,
     val isSimulateMode: Boolean = true,
     val hasSelectedProfileOnStartup: Boolean = false,
+    val hasCompletedAccountSetup: Boolean = false,
+    val accountEmail: String = "",
+    val isAccountVerified: Boolean = false,
+    val blockedApps: List<BlockedAppInfo> = BlockedAppInfo.DEFAULT_BLOCKED_APPS,
     val recentGoalUnlockedMessage: String? = null,
     val simulatedPeriod: TimeOfDayPeriod? = null,
     val activeWalkSession: ActiveWalkSession = ActiveWalkSession(),
@@ -89,6 +93,9 @@ data class StepLockData(
 
     val currentStreak: Int get() = activeProfile.currentStreak
     val bestStreak: Int get() = activeProfile.bestStreak
+
+    val activeBlockedPackages: Set<String>
+        get() = blockedApps.filter { it.isBlocked }.map { it.packageName }.toSet()
 
     val achievements: List<Achievement>
         get() = AchievementDefinitions.computeAchievementsForProfile(

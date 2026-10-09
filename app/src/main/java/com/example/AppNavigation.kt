@@ -13,6 +13,7 @@ sealed class AppRoute(val routeKey: String) {
     data class LevelDetail(val rank: UserRank) : AppRoute("level_${rank.level}")
     object Settings : AppRoute("settings")
     object ProfileSelection : AppRoute("profiles")
+    object BlockedApps : AppRoute("blocked_apps")
     object Trends : AppRoute("trends")
     object Achievements : AppRoute("achievements")
     object WebCompanion : AppRoute("web_companion")

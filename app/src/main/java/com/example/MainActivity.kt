@@ -41,6 +41,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -98,6 +99,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         StepLockRepository.init(this)
         stepSensorManager = StepSensorManager(this)
+        stepSensorManager?.startListening()
 
         // Automatically start the background monitor service
         try {
@@ -167,8 +169,15 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Initial Startup Profile Selection
-                if (!state.hasSelectedProfileOnStartup) {
+                // Initial Startup Setup & Blocked Apps Configuration
+                if (!state.hasCompletedAccountSetup) {
+                    InitialSetupScreen(
+                        onSetupComplete = {
+                            // Automatically ensure monitoring service is active
+                            AppMonitorService.start(context)
+                        }
+                    )
+                } else if (!state.hasSelectedProfileOnStartup) {
                     ProfileSelectionScreen(
                         onProfileSelected = { profileId ->
                             StepLockRepository.selectProfileAndDismissStartup(profileId)
@@ -265,6 +274,9 @@ class MainActivity : ComponentActivity() {
                                 onSwitchProfileClick = {
                                     navController.navigateTo(AppRoute.ProfileSelection)
                                 },
+                                onManageBlockedApps = {
+                                    navController.navigateTo(AppRoute.BlockedApps)
+                                },
                                 onTuneStepGoal = { newGoal ->
                                     StepLockRepository.updateDailyStepGoal(newGoal)
                                 },
@@ -305,6 +317,14 @@ class MainActivity : ComponentActivity() {
                             ProfileSelectionScreen(
                                 onProfileSelected = { profileId ->
                                     StepLockRepository.selectProfileAndDismissStartup(profileId)
+                                    navController.popBack()
+                                }
+                            )
+                        }
+
+                        is AppRoute.BlockedApps -> {
+                            InitialSetupScreen(
+                                onSetupComplete = {
                                     navController.popBack()
                                 }
                             )
@@ -393,6 +413,7 @@ fun MainDashboardScreen(
     var hasDismissedOnboarding by remember { mutableStateOf(false) }
     var showModeSwitcherSheet by remember { mutableStateOf(false) }
     var showRateModeDialog by remember { mutableStateOf(false) }
+    var showShareDailyStatsDialog by remember { mutableStateOf(false) }
 
     // Haptic feedback listener
     LaunchedEffect(state.triggerMilestoneHapticEvent) {
@@ -554,6 +575,25 @@ fun MainDashboardScreen(
                         Spacer(modifier = Modifier.width(6.dp))
 
                         IconButton(
+                            onClick = { showShareDailyStatsDialog = true },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(DarkSlateNavy)
+                                .border(1.dp, InnerCardBorder, RoundedCornerShape(10.dp))
+                                .testTag("top_bar_share_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share Activity",
+                                tint = ElectricCyan,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        IconButton(
                             onClick = { navController.navigateTo(AppRoute.Settings) },
                             modifier = Modifier
                                 .size(36.dp)
@@ -609,7 +649,8 @@ fun MainDashboardScreen(
                     dailySteps = state.dailySteps,
                     dailyStepGoal = state.dailyStepGoal,
                     currentRate = state.currentStepsPerMinute,
-                    period = state.currentPeriod
+                    period = state.currentPeriod,
+                    onShareClick = { showShareDailyStatsDialog = true }
                 )
             }
 
@@ -888,6 +929,14 @@ fun MainDashboardScreen(
                 Toast.makeText(context, "Tax rate mode updated!", Toast.LENGTH_SHORT).show()
             },
             onDismiss = { showRateModeDialog = false }
+        )
+    }
+
+    // Daily Steps & Activity Social Share Dialog (WhatsApp, Instagram, Facebook, X, etc.)
+    if (showShareDailyStatsDialog) {
+        SocialShareDailyStatsDialog(
+            state = state,
+            onDismiss = { showShareDailyStatsDialog = false }
         )
     }
 }

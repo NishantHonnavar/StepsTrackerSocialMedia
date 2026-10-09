@@ -36,7 +36,6 @@ import kotlinx.coroutines.launch
 class AppMonitorService : Service() {
 
     companion object {
-        const val TARGET_PACKAGE = "com.instagram.android"
         const val CHANNEL_ID = "step_lock_monitor_channel"
         const val NOTIFICATION_ID = 1001
 
@@ -141,20 +140,25 @@ class AppMonitorService : Service() {
         StepLockRepository.checkDailyMidnightOrMorningReset()
 
         val currentForegroundApp = getActiveForegroundPackage()
-        val isInstagramForeground = currentForegroundApp == TARGET_PACKAGE
-        StepLockRepository.setInstagramActive(isInstagramForeground)
-
         val state = StepLockRepository.state.value
 
-        if (isInstagramForeground) {
+        // Check if the current foreground app is one of the actively blocked apps
+        val isTargetAppForeground = currentForegroundApp != null &&
+                state.activeBlockedPackages.contains(currentForegroundApp)
+
+        StepLockRepository.setInstagramActive(isTargetAppForeground)
+
+        if (isTargetAppForeground) {
             if (state.bankedSeconds <= 0) {
-                // Banked time is exhausted or 0 -> Remove bubble & Enforce Lock!
+                // Banked time is exhausted -> Remove bubble & Enforce Lock Screen!
                 mainHandler.post { removeFloatingBubble() }
                 launchLockScreenActivity()
             } else {
-                // Instagram is actively being used with valid banked screen time -> deduct 1 second per second
+                // Target app is open with valid banked time -> Deduct 1 second per second
                 StepLockRepository.consumeScreenTime(1)
-                mainHandler.post { updateFloatingBubble(state, isInstagramForeground = true) }
+                // Show mini bubble ONLY on Instagram per user request
+                val isInstagramForeground = currentForegroundApp == "com.instagram.android"
+                mainHandler.post { updateFloatingBubble(state, isInstagramForeground = isInstagramForeground) }
             }
         } else {
             mainHandler.post { removeFloatingBubble() }
@@ -163,6 +167,10 @@ class AppMonitorService : Service() {
         updateNotification()
     }
 
+    /**
+     * Small, unobtrusive floating timer pill displayed ONLY on Instagram at top-left,
+     * fully draggable so user can move it anywhere on screen.
+     */
     private fun updateFloatingBubble(state: StepLockData, isInstagramForeground: Boolean) {
         if (!Settings.canDrawOverlays(this)) return
 
@@ -171,7 +179,7 @@ class AppMonitorService : Service() {
         }
 
         if (isInstagramForeground && state.bankedSeconds > 0) {
-            val bubbleText = "⚡ %02d:%02d".format(state.bankedMinutes, state.bankedSecondsRemainder)
+            val bubbleText = "⏱ %02d:%02d".format(state.bankedMinutes, state.bankedSecondsRemainder)
             if (floatingBubbleView == null) {
                 val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -180,8 +188,7 @@ class AppMonitorService : Service() {
                     WindowManager.LayoutParams.TYPE_PHONE
                 }
 
-                // Place in the bottom-center empty area (above Instagram bottom nav bar: y = 200dp)
-                // This completely clears top-right notification & direct message icons!
+                // Smaller footprint, placed neatly on top-left of Instagram
                 val params = WindowManager.LayoutParams(
                     WindowManager.LayoutParams.WRAP_CONTENT,
                     WindowManager.LayoutParams.WRAP_CONTENT,
@@ -190,26 +197,26 @@ class AppMonitorService : Service() {
                             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                     PixelFormat.TRANSLUCENT
                 ).apply {
-                    gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                    x = 0
-                    y = 210 // Placed comfortably above Instagram's bottom navigation bar
+                    gravity = Gravity.TOP or Gravity.START
+                    x = 24 // Margined from top-left screen edge
+                    y = 120 // Positioned cleanly below system status bar and top left IG camera icon
                 }
 
                 val tv = TextView(this).apply {
                     text = bubbleText
                     setTextColor(android.graphics.Color.WHITE)
-                    textSize = 12f
+                    textSize = 10.5f // Smaller compact size
                     typeface = Typeface.DEFAULT_BOLD
-                    setPadding(32, 14, 32, 14)
-                    elevation = 16f
+                    setPadding(18, 8, 18, 8) // Unobtrusive small padding
+                    elevation = 12f
                     background = GradientDrawable().apply {
                         shape = GradientDrawable.RECTANGLE
-                        cornerRadius = 40f
-                        setColor(android.graphics.Color.parseColor("#E60A0F1D"))
-                        setStroke(2, android.graphics.Color.parseColor("#00E5FF"))
+                        cornerRadius = 24f
+                        setColor(android.graphics.Color.parseColor("#E6090611")) // Obsidian Black
+                        setStroke(2, android.graphics.Color.parseColor("#A855F7")) // Royal Purple Glow
                     }
 
-                    // Enable free dragging so user can position anywhere on screen
+                    // Draggable support: freely move the compact timer anywhere on screen
                     setOnTouchListener(object : View.OnTouchListener {
                         private var initialX = 0
                         private var initialY = 0
@@ -228,12 +235,11 @@ class AppMonitorService : Service() {
                                 }
                                 MotionEvent.ACTION_MOVE -> {
                                     params.x = initialX + (event.rawX - initialTouchX).toInt()
-                                    // With Gravity.BOTTOM, decreasing rawY moves the view upward
-                                    params.y = initialY - (event.rawY - initialTouchY).toInt()
+                                    params.y = initialY + (event.rawY - initialTouchY).toInt()
                                     try {
                                         windowManager?.updateViewLayout(v, params)
                                     } catch (e: Exception) {
-                                        // Ignore update during transition
+                                        // Ignore during transitions
                                     }
                                     return true
                                 }
@@ -333,7 +339,7 @@ class AppMonitorService : Service() {
         )
 
         val title = if (state.isInstagramActive) {
-            if (state.bankedSeconds > 0) "Instagram Active (${state.activeProfile.name})" else "Scroll Tax Due • Instagram Locked"
+            if (state.bankedSeconds > 0) "App Access Active" else "Scroll Tax Due • App Locked"
         } else {
             "Scroll Tax Active • ${state.activeProfile.name}"
         }
@@ -388,7 +394,7 @@ class AppMonitorService : Service() {
                 "Scroll Tax Monitor",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Monitors Instagram screen time and physical steps"
+                description = "Monitors app screen time and physical steps"
                 setShowBadge(false)
             }
             val manager = getSystemService(NotificationManager::class.java)

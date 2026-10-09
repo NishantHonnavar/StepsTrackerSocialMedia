@@ -36,6 +36,10 @@ object StepLockRepository {
     private const val KEY_GMAIL_USER_EMAIL = "key_gmail_user_email"
     private const val KEY_LAST_WEEKLY_REPORT_TIME = "key_last_weekly_report_time"
     private const val KEY_LAST_WEEKLY_REPORT_STATUS = "key_last_weekly_report_status"
+    private const val KEY_BLOCKED_APPS_JSON = "key_blocked_apps_json"
+    private const val KEY_ACCOUNT_EMAIL = "key_account_email"
+    private const val KEY_ACCOUNT_VERIFIED = "key_account_verified"
+    private const val KEY_ONBOARDING_COMPLETED = "key_onboarding_completed"
 
     private var prefs: SharedPreferences? = null
     private var firebaseRepo: FirebaseStepLockRepository? = null
@@ -78,6 +82,26 @@ object StepLockRepository {
             val savedGmailEmail = p.getString(KEY_GMAIL_USER_EMAIL, "nishantforscience@gmail.com") ?: "nishantforscience@gmail.com"
             val savedLastReportTime = p.getLong(KEY_LAST_WEEKLY_REPORT_TIME, 0L)
             val savedLastReportStatus = p.getString(KEY_LAST_WEEKLY_REPORT_STATUS, "") ?: ""
+            val savedEmail = p.getString(KEY_ACCOUNT_EMAIL, "") ?: ""
+            val savedVerified = p.getBoolean(KEY_ACCOUNT_VERIFIED, false)
+            val savedOnboardingDone = p.getBoolean(KEY_ONBOARDING_COMPLETED, false)
+
+            val blockedAppsJson = p.getString(KEY_BLOCKED_APPS_JSON, null)
+            val blockedApps = if (!blockedAppsJson.isNullOrEmpty()) {
+                try {
+                    val array = JSONArray(blockedAppsJson)
+                    val list = mutableListOf<BlockedAppInfo>()
+                    for (i in 0 until array.length()) {
+                        list.add(BlockedAppInfo.fromJsonObject(array.getJSONObject(i)))
+                    }
+                    if (list.isEmpty()) BlockedAppInfo.DEFAULT_BLOCKED_APPS else list
+                } catch (e: Exception) {
+                    BlockedAppInfo.DEFAULT_BLOCKED_APPS
+                }
+            } else {
+                BlockedAppInfo.DEFAULT_BLOCKED_APPS
+            }
+
             val activeProfile = profiles.firstOrNull { it.id == activeId } ?: profiles.first()
 
             val weeklyTrends = DayTrend.createSampleWeek(
@@ -90,7 +114,11 @@ object StepLockRepository {
                     profiles = profiles,
                     activeProfileId = activeId,
                     isSimulateMode = savedSimulateMode,
-                    hasSelectedProfileOnStartup = false,
+                    hasSelectedProfileOnStartup = savedOnboardingDone,
+                    hasCompletedAccountSetup = savedOnboardingDone,
+                    accountEmail = savedEmail,
+                    isAccountVerified = savedVerified,
+                    blockedApps = blockedApps,
                     weeklyTrends = weeklyTrends,
                     isMorningAutoLockEnabled = savedMorningLock,
                     isGmailSyncEnabled = savedGmailSync,
@@ -873,6 +901,62 @@ object StepLockRepository {
                 triggerMilestoneHapticEvent = System.currentTimeMillis()
             )
         }
+    }
+
+    fun toggleBlockedApp(packageName: String, isBlocked: Boolean) {
+        _state.update { current ->
+            val updated = current.blockedApps.map {
+                if (it.packageName == packageName) it.copy(isBlocked = isBlocked) else it
+            }
+            saveBlockedAppsToPrefs(updated)
+            current.copy(blockedApps = updated)
+        }
+    }
+
+    fun addCustomBlockedApp(packageName: String, appName: String, emoji: String = "📱") {
+        if (packageName.isBlank()) return
+        _state.update { current ->
+            val exists = current.blockedApps.any { it.packageName.equals(packageName, ignoreCase = true) }
+            val updated = if (exists) {
+                current.blockedApps.map {
+                    if (it.packageName.equals(packageName, ignoreCase = true)) it.copy(isBlocked = true) else it
+                }
+            } else {
+                current.blockedApps + BlockedAppInfo(packageName.trim(), appName.ifBlank { packageName.trim() }, emoji, true)
+            }
+            saveBlockedAppsToPrefs(updated)
+            current.copy(blockedApps = updated)
+        }
+    }
+
+    private fun saveBlockedAppsToPrefs(apps: List<BlockedAppInfo>) {
+        val array = JSONArray()
+        apps.forEach { array.put(it.toJsonObject()) }
+        prefs?.edit()?.putString(KEY_BLOCKED_APPS_JSON, array.toString())?.apply()
+    }
+
+    fun completeOnboardingAndVerification(email: String) {
+        val clean = email.trim()
+        prefs?.edit()?.apply {
+            putString(KEY_ACCOUNT_EMAIL, clean)
+            putBoolean(KEY_ACCOUNT_VERIFIED, true)
+            putBoolean(KEY_ONBOARDING_COMPLETED, true)
+            apply()
+        }
+        _state.update {
+            it.copy(
+                accountEmail = clean,
+                isAccountVerified = true,
+                hasCompletedAccountSetup = true,
+                hasSelectedProfileOnStartup = true
+            )
+        }
+    }
+
+    fun updateAccountEmail(email: String) {
+        val clean = email.trim()
+        prefs?.edit()?.putString(KEY_ACCOUNT_EMAIL, clean)?.apply()
+        _state.update { it.copy(accountEmail = clean) }
     }
 
     fun resetRankXp() {
